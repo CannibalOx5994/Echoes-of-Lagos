@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ECHOES OF LAGOS</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #instructions {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 6px 10px;
+      font-family: sans-serif;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="instructions">
+    Keys: <b>T</b> = Top‑Down View, <b>F</b> = Free Orbit View
+  </div>
+
+  <script type="module">
+    import * as THREE from './js/three.module.js';
+    import { GLTFLoader } from './js/GLTFLoader.js';
+    import { OrbitControls } from './js/OrbitControls.js';
+
+    // Scene
+    const scene = new THREE.Scene();
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      10000
+    );
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    document.body.appendChild(renderer.domElement);
+
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    directionalLight.position.set(200, 400, 300);
+    scene.add(directionalLight);
+
+    const gridHelper = new THREE.GridHelper(2000, 100);
+    scene.add(gridHelper);
+
+    const loader = new GLTFLoader();
+
+    // GLTF Loader
+    loader.load('./lagos.glb', (gltf) => {
+      const model = gltf.scene;
+
+      // Scale up moderately (adjust factor if needed)
+      model.scale.set(0.02, 0.02, 0.02);
+
+      // Compute bounding box AFTER scaling
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      // Recenter model at origin
+      model.position.sub(center);
+
+      scene.add(model);
+
+      // Initial camera: top‑down
+      camera.position.set(0, size.y * 2, 0);
+      camera.up.set(0, 1, 0); // keep default up vector
+      camera.lookAt(0, 0, 0);
+
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      console.log('✅ Model loaded, centered, scaled, and top-down view set');
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (key === 't') {
+        // Snap back to top‑down view
+        camera.position.set(0, 500, 0);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        console.log('🔄 Toggled to top‑down view');
+      }
+      if (key === 'f') {
+        // Snap to a nice angled free‑orbit view
+        camera.position.set(500, 300, 500);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        console.log('🔄 Toggled to free orbit view');
+      }
+    });
+
+    // Animate
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
